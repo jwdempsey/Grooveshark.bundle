@@ -1,14 +1,26 @@
 import time
+import datetime
 from grooveshark import Grooveshark
 
 ################################################################################
-TITLE       = 'Grooveshark'
-ART         = 'art-default.jpg'
-ICON        = 'icon-default.png'
-SEARCH_ICON = 'icon-search.png'
-PREFS_ICON  = 'icon-prefs.png'
-PREFIX      = '/music/grooveshark'
-shark       = Grooveshark()
+TITLE          = 'Grooveshark'
+ART            = 'art-default.jpg'
+ICON           = 'icon-default.png'
+SEARCH_ICON    = 'icon-search.png'
+PREFS_ICON     = 'icon-prefs.png'
+PREFIX         = '/music/grooveshark'
+shark          = Grooveshark()
+
+def toInt(s):
+    try:
+        return int(s)
+    except ValueError:
+        return int(float(s))
+
+def sortInt(s):
+    if s == None or s == '0' or s == '1901':
+        return 10000
+    return int(s)
 
 ################################################################################
 def Start():
@@ -22,20 +34,17 @@ def Start():
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def Main():
     oc = ObjectContainer(title2=TITLE)
-    shark.authenticateUser(Prefs['username'], Prefs['password'])
 
+    shark.authenticateUser(Prefs['username'], Prefs['password'])
     if shark.isAuthenticated():
         oc.add(DirectoryObject(key=Callback(Collection), title='Collection'))
         oc.add(DirectoryObject(key=Callback(Favorites), title='Favorites'))
         oc.add(DirectoryObject(key=Callback(Playlists), title='Playlists'))
 
     oc.add(DirectoryObject(key=Callback(Genres), title='Genres'))
-
-    #Turning off for now
-    #oc.add(DirectoryObject(key=Callback(Broadcasts), title='Broadcasts'))
-
+    oc.add(DirectoryObject(key=Callback(Broadcasts), title='Broadcasts'))
     oc.add(DirectoryObject(key=Callback(Popular), title='Popular'))
-    oc.add(InputDirectoryObject(key=Callback(Search), title="Search", prompt="Search for", thumb=R(SEARCH_ICON)))
+    oc.add(InputDirectoryObject(key=Callback(Search), title='Search', prompt='Search for', thumb=R(SEARCH_ICON)))
     oc.add(PrefsObject(title='Preferences', thumb=R(PREFS_ICON)))
     return oc
 
@@ -45,8 +54,8 @@ def Collection(page=0):
     oc = ObjectContainer(title2='Collection')
 
     library = shark.userGetSongsInLibrary(page)
-    for song in library['Songs']:
-        oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
+    for song in sorted(library['Songs'], key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
+        oc.add(CreateTrackObject(song=song))
 
     if library['hasMore'] == True:
         oc.add(NextPageObject(key=Callback(Collection, page=page+1)))
@@ -59,8 +68,8 @@ def Favorites():
     oc = ObjectContainer(title2='Favorites')
 
     favorites = shark.getFavorites()
-    for song in favorites:
-        oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
+    for song in sorted(favorites, key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
+        oc.add(CreateTrackObject(song=song))
 
     return oc
 
@@ -97,21 +106,25 @@ def Genres():
 def Broadcasts():
     oc = ObjectContainer(title2='Broadcasts')
 
-    broadcasts = shark.getTopBroadcastsCombinedEx()
-    for key, value in broadcasts['all'].iteritems():
+    broadcasts = shark.getTopBroadcastsCombined()
+    for key, value in sorted(broadcasts.iteritems(), key = lambda x: ('subscribers_count' in x[1], x[1].get('subscribers_count')), reverse = True):
         if 'n' in value and 's' in value:
             if 'active' in value['s']:
                 if 'b' in value['s']['active']:
                     if 'tk' in value['s']['active']['b'] and value['s']['active']['b']['tk']:
                         song = {'SongID': value['s']['active']['b']['tk'],
-                                'Name': value['n'],
-                                'CoverArtFilename': shark.no_user_url}
+                                'ArtistName': value['n'],
+                                'Name': value['s']['active']['b']['sN'] + ' by ' + value['s']['active']['b']['arN'],
+                                'BroadcastId': key.split(':')[1],
+                                'CoverArtFilename': shark.no_user_url,
+                                'EstimateDuration': None}
+
                         if 'i' in value and value['i'] != None:
                             song['CoverArtFilename'] = shark.broadcast_base_url + value['i']
                         elif 'users' in value and len(value['users']) > 0 and 'Picture' in value['users'][0] and value['users'][0]['Picture'] != None:
                             song['CoverArtFilename'] = shark.users_base_url + value['users'][0]['Picture']
 
-                        oc.add(CreateTrackObject(song=song, fn=GetBroadcastURL))
+                        oc.add(CreateTrackObject(song=song))
 
     return oc
 
@@ -131,7 +144,7 @@ def PlaylistsSubMenu(title, id):
 
     songs = shark.playlistGetSongs(id)
     for song in songs['Songs']:
-            oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
+            oc.add(CreateTrackObject(song=song))
 
     return oc
 
@@ -147,15 +160,15 @@ def GenreSubMenu(title, id):
 @route(PREFIX + '/genreplaymenu')
 def GenrePlayMenu(title, id, type=None):
     oc = ObjectContainer(title2=title)
-    info = shark.getPageInfoByIDType(id)
 
+    info = shark.getPageInfoByIDType(id)
     if type == 'related':
         for song in info['Data']['RelatedTags']:
             oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=song['TagName'], id=song['TagID']), title='Play ' + song['TagName']))
 
     else:
         for song in info['Data']['Songs']:
-            oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
+            oc.add(CreateTrackObject(song=song))
 
     return oc
 
@@ -166,129 +179,133 @@ def PopularSubMenu(title, type):
 
     songs = shark.popularGetSongs(type)
     for song in songs['Songs']:
-        oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
+        oc.add(CreateTrackObject(song=song))
 
     return oc
 
 ################################################################################
 @route(PREFIX + '/search')
 def Search(query):
-    oc = ObjectContainer(title2="Search Results")
+    oc = ObjectContainer(title2='Search Results')
 
-    results = shark.getAutocompleteEx(query)
-    
-    if len(results) == 0:
-        oc.header = 'Search Results'
-        oc.message = 'No results found'        
-    else:    
-        for key, values in results.iteritems():        
-            if key == 'artist':                
-                for artist in values:
-                    artistObj = ArtistObject(
-                        key=Callback(ShowArtistOptions, name=artist['Name'], id=artist['ArtistID']),
-                        rating_key=artist['ArtistID'],
-                        title=artist['Name']
-                    )
-                    
-                    if 'CoverArtFilename' in artist and artist['CoverArtFilename'] != None and "".join(artist['CoverArtFilename'].split()) != '':                    
-                        artistObj.thumb=shark.artist_base_url + artist['CoverArtFilename']
-                    else:
-                        artistObj.thumb=shark.no_artist_url
-                    
-                    oc.add(artistObj)
-            
-            elif key == 'song':
-                for song in values:
-                    oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
-            
-            elif key == 'album':
-                for album in values:
-                    albumObj = AlbumObject(
-                        key=Callback(ShowAlbumOptions, name=album['AlbumName'], id=album['AlbumID']),
-                        rating_key=album['AlbumID'],
-                        artist=album['ArtistName'],
-                        title=album['AlbumName']
-                    )
-                    
-                    if 'CoverArtFilename' in album and album['CoverArtFilename'] != None and "".join(album['CoverArtFilename'].split()) != '':                    
-                        albumObj.thumb=shark.album_base_url + album['CoverArtFilename']
-                    else:
-                        albumObj.thumb=shark.no_album_url
-                    
-                    oc.add(albumObj)    
+    results = shark.getResultsFromSearch(query)
+    for key, values in results['result'].iteritems():
+        if key == 'Artists':
+            for artist in values:
+                artistObj = ArtistObject(
+                    key=Callback(ShowArtistOptions, name=artist['Name'], id=artist['ArtistID']),
+                    rating_key=artist['ArtistID'],
+                    title=artist['Name']
+                )
+
+                if 'CoverArtFilename' in artist and artist['CoverArtFilename'] != None and ''.join(artist['CoverArtFilename'].split()) != '':
+                    artistObj.thumb=shark.artist_base_url + artist['CoverArtFilename']
+                else:
+                    artistObj.thumb=shark.no_artist_url
+
+                oc.add(artistObj)
+
+        elif key == 'Songs':
+            for song in values:
+                oc.add(CreateTrackObject(song=song))
+
+        elif key == 'Albums':
+            for album in values:
+                albumObj = AlbumObject(
+                    key=Callback(ShowAlbumOptions, name=album['AlbumName'], id=album['AlbumID']),
+                    rating_key=album['AlbumID'],
+                    artist=album['ArtistName'],
+                    title=album['AlbumName']
+                )
+
+                if 'CoverArtFilename' in album and album['CoverArtFilename'] != None and ''.join(album['CoverArtFilename'].split()) != '':
+                    albumObj.thumb=shark.album_base_url + album['CoverArtFilename']
+                else:
+                    albumObj.thumb=shark.no_album_url
+
+                oc.add(albumObj)
+
     return oc
 
 ################################################################################
-@route(PREFIX + '/showartistoptions')    
+@route(PREFIX + '/showartistoptions')
 def ShowArtistOptions(name, id):
     oc = ObjectContainer(title2=name)
-    
+
     albums = shark.artistGetAllAlbums(id)
-    for album in albums['albums']:
+    for album in sorted(albums['albums'], key = lambda x: sortInt(x.get('Year'))):
         albumObj = AlbumObject(
             key=Callback(ShowAlbumOptions, name=album['Name'], id=album['AlbumID']),
             rating_key=album['AlbumID'],
             artist=name,
             title=album['Name']
         )
-        
-        if 'CoverArtFilename' in album and album['CoverArtFilename'] != None and "".join(album['CoverArtFilename'].split()) != '':                    
+
+        if 'CoverArtFilename' in album and album['CoverArtFilename'] != None and ''.join(album['CoverArtFilename'].split()) != '':
             albumObj.thumb=shark.album_base_url + album['CoverArtFilename']
         else:
             albumObj.thumb=shark.no_album_url
-        
+
         oc.add(albumObj)
-    
+
     return oc
-    
+
 ################################################################################
-@route(PREFIX + '/showalbumoptions')    
+@route(PREFIX + '/showalbumoptions')
 def ShowAlbumOptions(name, id):
     oc = ObjectContainer(title2=name)
-    
+
     songs = shark.albumGetAllSongs(id)
-    for song in songs:
-        oc.add(CreateTrackObject(song=song, fn=GetStreamURL))
-    
-    return oc    
+    for song in sorted(songs, key = lambda x: sortInt(x.get('TrackNum'))):
+        oc.add(CreateTrackObject(song=song))
+
+    return oc
 
 ################################################################################
 @route(PREFIX + '/createtrackobject', song=dict)
-def CreateTrackObject(song, fn, include_container=False):    
-    track_obj = TrackObject(
-        key = Callback(CreateTrackObject, song=song, fn=fn, include_container=True),
-        rating_key = song['SongID'],
-        title = song['Name'],        
-        items = [
-            MediaObject(
-                audio_codec = AudioCodec.MP3,
-                container = 'mp3',
-                parts = [
-                    PartObject(key = Callback(fn, id=song['SongID'], ext='mp3'))
-                ]
-            )
-        ]
+def CreateTrackObject(song, include_container=False):
+    media_obj = MediaObject(
+        audio_codec = AudioCodec.MP3,
+        container = 'mp3'
     )
-    
+    track_obj = TrackObject(
+        key = Callback(CreateTrackObject, song=song, include_container=True),
+        rating_key = song['SongID']
+    )
+
+    if 'Name' in song:
+        track_obj.title = song['Name']
+    elif 'SongName' in song:
+        track_obj.title = song['SongName']
+    else:
+        track_obj.title = 'No title provided'
+
+    if 'BroadcastId' in song:
+        media_obj.add(PartObject(key = Callback(GetBroadcastURL, id=song['BroadcastId'], ext='mp3')))
+    else:
+        media_obj.add(PartObject(key = Callback(GetStreamURL, id=song['SongID'], ext='mp3')))
+
     if 'ArtistName' in song and song['ArtistName'] != None:
         track_obj.artist = song['ArtistName']
-    
+
     if 'AlbumName' in song and song['AlbumName'] != None:
         track_obj.album = song['AlbumName']
 
     if 'TrackNum' in song and song['TrackNum'] != None:
-        track_obj.index = int(song['TrackNum'])    
+        track_obj.index = int(song['TrackNum'])
 
     if 'EstimateDuration' in song and song['EstimateDuration'] != None:
-        track_obj.duration = int(song['EstimateDuration']) * 1000
-    
-    if 'CoverArtFilename' in song and song['CoverArtFilename'] != None and "".join(song['CoverArtFilename'].split()) != '':
+        track_obj.duration = toInt(song['EstimateDuration']) * 1000
+
+    if 'CoverArtFilename' in song and song['CoverArtFilename'] != None and ''.join(song['CoverArtFilename'].split()) != '':
         if song['CoverArtFilename'].startswith('http'):
             track_obj.thumb = song['CoverArtFilename']
         else:
             track_obj.thumb = shark.album_base_url + song['CoverArtFilename']
-    else:        
+    else:
         track_obj.thumb = shark.no_album_url
+
+    track_obj.add(media_obj)
 
     if include_container:
         return ObjectContainer(objects=[track_obj])
@@ -299,21 +316,29 @@ def CreateTrackObject(song, fn, include_container=False):
 @route(PREFIX + '/getstreamurl')
 def GetStreamURL(id):
     url, server, key = shark.getStreamKeyFromSongIDEx(id)
-    Thread.Create(MarkDownloads, id=id, server=server, key=key)
+    Thread.Create(MarkSongs, id=id, server=server, key=key)
     return Redirect(url)
 
 ################################################################################
 @route(PREFIX + '/getbroadcasturl')
 def GetBroadcastURL(id):
-    url, server, key = shark.getStreamKeyFromFileToken(id)
-    Thread.Create(MarkDownloads, id=id, server=server, key=key)
+    url = shark.getMobileBroadcastURL(id, Prefs['broadcast_quality'])
+
+    if url == None:
+        url = shark.getMobileBroadcastURL(id, Prefs['broadcast_quality'])
+
     return Redirect(url)
 
-########################## Thread Function ####################################
-def MarkDownloads(id, server, key):
+########################## Thread Function #####################################
+def MarkSongs(id, server, key):
     shark.markSongDownloadedEx(id, server, key)
+    time.sleep(2)
+
+    shark.markSongQueueSongPlayed(id, server, key)
     time.sleep(30)
+
     shark.markStreamKeyOver30Seconds(id, server, key)
     time.sleep(30)
+
     shark.markSongComplete(id, server, key)
     return

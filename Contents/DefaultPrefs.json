@@ -11,5 +11,11 @@
         "label": "Password",
         "default": "",
         "option": "hidden"
+    },
+    {
+        "id": "broadcast_quality",
+        "type": "bool",
+        "label": "HQ Broadcast Stream (slower)",
+        "default": "false"
     }
 ]

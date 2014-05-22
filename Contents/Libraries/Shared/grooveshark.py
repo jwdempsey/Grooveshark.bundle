@@ -22,22 +22,23 @@ class Grooveshark(object):
         self.session            = hashlib.md5(self.user.encode('utf-8')).hexdigest()
         self.secret             = hashlib.md5(self.session.encode('utf-8')).hexdigest()
         self.url                = 'grooveshark.com'
-        self.stream_url         = 'http://%s/stream.php?streamKey=%s'        
+        self.stream_url         = 'http://%s/stream.php?streamKey=%s'
         self.artist_base_url    = 'http://images.gs-cdn.net/static/artists/'
         self.album_base_url     = 'http://images.gs-cdn.net/static/albums/'
         self.playlist_base_url  = 'http://images.gs-cdn.net/static/playlists/'
         self.broadcast_base_url = 'http://images.gs-cdn.net/static/broadcasts/'
-        self.users_base_url     = 'http://images.gs-cdn.net/static/users/'        
+        self.users_base_url     = 'http://images.gs-cdn.net/static/users/'
         self.no_artist_url      = 'http://images.gs-cdn.net/static/artists/500_artist.png'
         self.no_album_url       = 'http://images.gs-cdn.net/static/albums/500_album.png'
-        self.no_user_url        = 'http://images.gs-cdn.net/static/users/500_user.png'        
+        self.no_user_url        = 'http://images.gs-cdn.net/static/users/500_user.png'
         self.country            = {'ID': 221, 'CC1': 0, 'CC2': 0, 'CC3': 0, 'CC4': 0, 'DMA': 0, 'IPR': 0}
         self.header             = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; rv:9.0.1) Gecko/20100101 Firefox/9.0.1',
                                    'Referer':'http://%s' % (self.url),
                                    'Accept-Encoding': 'gzip',
                                    'Content-Type': 'application/json'}
-        self.clients            = {'htmlshark': {'version': '20130520', 'token': 'nuggetsOfBaller'},
-                                   'jsqueue':   {'version': '20130520', 'token': 'chickenFingers'}}
+        self.clients            = {'htmlshark':  {'version': '20130520', 'token': 'nuggetsOfBaller'},
+                                   'jsqueue':    {'version': '20130520', 'token': 'chickenFingers'},
+                                   'mobileshark':{'version': '20120830', 'token': 'gooeyFlubber'}}
         self._initiateQueue()
 
     def _initiateQueue(self):
@@ -88,7 +89,7 @@ class Grooveshark(object):
     def userGetSongsInLibrary(self, page=0):
         return self._request('userGetSongsInLibrary', {'page': page, 'userID': self.user_id})
 
-    def getFavorites(self, ofWhat="Songs"):
+    def getFavorites(self, ofWhat='Songs'):
         return self._request('getFavorites', {'userID': self.user_id, 'ofWhat': ofWhat})
 
     def userGetPlaylists(self):
@@ -106,18 +107,26 @@ class Grooveshark(object):
     def getPageInfoByIDType(self, id, tag='tag'):
         return self._request('getPageInfoByIDType', {'id': id, 'type': tag})
 
-    def getTopBroadcastsCombinedEx(self):
-        return self._request('getTopBroadcastsCombinedEx', {'withStagingEvents': False})
+    def getTopBroadcastsCombined(self):
+        return self._request('getTopBroadcastsCombined', {})
 
     def getAutocompleteEx(self, query):
         parameters = {'query': query,
                       'type': 'combined'}
 
         return self._request('getAutocompleteEx', parameters)
-        
+
+    def getResultsFromSearch(self, query):
+        parameters = {'query' : query,
+                      'type' : ['Songs', 'Artists', 'Albums'],
+                      'guts' : 0,
+                      'ppOverride' : False}
+
+        return self._request('getResultsFromSearch', parameters)
+
     def albumGetAllSongs(self, id):
         return self._request('albumGetAllSongs', {'albumID': id})
-        
+
     def artistGetAllAlbums(self, id):
         return self._request('artistGetAllAlbums', {'artistID': id})
 
@@ -131,15 +140,11 @@ class Grooveshark(object):
         data = self._request('getStreamKeyFromSongIDEx', parameters, 'jsqueue')
         return self.stream_url % (data['ip'], data['streamKey']), data['streamServerID'], data['streamKey']
 
-    def getStreamKeyFromFileToken(self, id):
-        parameters = {'mobile': False,
-                      'prefetch': False,
-                      'fileToken': id,
-                      'type': 512,
-                      'country': self.country}
-
-        data = self._request('getStreamKeyFromFileToken', parameters, 'jsqueue')
-        return self.stream_url % (data['ip'], data['streamKey']), data['streamServerID'], data['streamKey']
+    def getMobileBroadcastURL(self, id, hq=False):
+        data = self._request('getMobileBroadcastURL', {'broadcastID': id}, 'mobileshark')
+        q = '' if hq else '&cl=552960000'
+        if data != False:
+            return data['url'].replace('\\', '') + '?sid=' + data['key'] + q
 
     def markSongDownloadedEx(self, id, streamServerID, streamKey):
         parameters = {'songID': id,
@@ -147,6 +152,15 @@ class Grooveshark(object):
                       'streamKey': streamKey}
 
         return self._request('markSongDownloadedEx', parameters, 'jsqueue')
+
+    def markSongQueueSongPlayed(self, id, streamServerID, streamKey):
+        parameters = {'songID' : id,
+                      'songQueueSongID' : 1,
+                      'streamKey' : streamKey,
+                      'songQueueID' : self.queue,
+                      'streamServerID' : streamServerID}
+
+        return self._request('markSongQueueSongPlayed', parameters, 'jsqueue')
 
     def markStreamKeyOver30Seconds(self, id, streamServerID, streamKey):
         parameters = {'songQueueID': self.queue,

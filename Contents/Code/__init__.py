@@ -35,11 +35,12 @@ def Start():
 def Main():
     oc = ObjectContainer(title2=TITLE)
 
-    shark.authenticateUser(Prefs['username'], Prefs['password'])
-    if shark.isAuthenticated():
-        oc.add(DirectoryObject(key=Callback(Collection), title='Collection'))
-        oc.add(DirectoryObject(key=Callback(Favorites), title='Favorites'))
-        oc.add(DirectoryObject(key=Callback(Playlists), title='Playlists'))
+    if Prefs['username'] and Prefs['password']:
+        shark.authenticateUser(Prefs['username'], Prefs['password'])
+        if shark.isAuthenticated():
+            oc.add(DirectoryObject(key=Callback(Collection), title='Collection'))
+            oc.add(DirectoryObject(key=Callback(Favorites), title='Favorites'))
+            oc.add(DirectoryObject(key=Callback(Playlists), title='Playlists'))
 
     oc.add(DirectoryObject(key=Callback(Genres), title='Genres'))
     oc.add(DirectoryObject(key=Callback(Broadcasts), title='Broadcasts'))
@@ -316,8 +317,11 @@ def CreateTrackObject(song, include_container=False):
 @route(PREFIX + '/getstreamurl')
 def GetStreamURL(id):
     url, server, key = shark.getStreamKeyFromSongIDEx(id)
-    Thread.Create(MarkSongs, id=id, server=server, key=key)
-    return Redirect(url)
+    if url:
+        Thread.Create(MarkSongs, id=id, server=server, key=key)
+        return Redirect(url)
+    else:
+        return Redirect('')
 
 ################################################################################
 @route(PREFIX + '/getbroadcasturl')

@@ -138,7 +138,9 @@ class Grooveshark(object):
                       'country': self.country}
 
         data = self._request('getStreamKeyFromSongIDEx', parameters, 'jsqueue')
-        return self.stream_url % (data['ip'], data['streamKey']), data['streamServerID'], data['streamKey']
+        if len(data) > 0:
+            return self.stream_url % (data['ip'], data['streamKey']), data['streamServerID'], data['streamKey']
+        return '','',''
 
     def getMobileBroadcastURL(self, id, hq=False):
         data = self._request('getMobileBroadcastURL', {'broadcastID': id}, 'mobileshark')

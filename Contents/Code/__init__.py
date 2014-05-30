@@ -27,8 +27,9 @@ def Start():
     DirectoryObject.thumb  = R(ICON)
     ObjectContainer.art    = R(ART)
     ObjectContainer.title1 = TITLE
-    VideoClipObject.art    = R(ART)
-    VideoClipObject.thumb  = R(ICON)
+    ArtistObject.thumb     = R(ICON)
+    AlbumObject.thumb      = R(ICON)
+    TrackObject.thumb      = R(ICON)
 
 ################################################################################
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)

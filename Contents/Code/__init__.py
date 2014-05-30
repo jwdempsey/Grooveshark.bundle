@@ -134,8 +134,8 @@ def Broadcasts():
 def Popular():
     oc = ObjectContainer(title2='Popular')
     oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular Today', type='daily'), title='Popular Today'))
-    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular Today', type='weekly'), title='Popular This Week'))
-    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular Today', type='monthly'), title='Popular This Month'))
+    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular This Week', type='weekly'), title='Popular This Week'))
+    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular This Month', type='monthly'), title='Popular This Month'))
     return oc
 
 ################################################################################

@@ -38,21 +38,21 @@ def Main():
     if Prefs['username'] and Prefs['password']:
         shark.authenticateUser(Prefs['username'], Prefs['password'])
         if shark.isAuthenticated():
-            oc.add(DirectoryObject(key=Callback(Collection), title='Collection'))
-            oc.add(DirectoryObject(key=Callback(Favorites), title='Favorites'))
-            oc.add(DirectoryObject(key=Callback(Playlists), title='Playlists'))
+            oc.add(DirectoryObject(key=Callback(Collection), title=L('Collection')))
+            oc.add(DirectoryObject(key=Callback(Favorites), title=L('Favorites')))
+            oc.add(DirectoryObject(key=Callback(Playlists), title=L('Playlists')))
 
-    oc.add(DirectoryObject(key=Callback(Genres), title='Genres'))
-    oc.add(DirectoryObject(key=Callback(Broadcasts), title='Broadcasts'))
-    oc.add(DirectoryObject(key=Callback(Popular), title='Popular'))
-    oc.add(InputDirectoryObject(key=Callback(Search), title='Search', prompt='Search for', thumb=R(SEARCH_ICON)))
-    oc.add(PrefsObject(title='Preferences', thumb=R(PREFS_ICON)))
+    oc.add(DirectoryObject(key=Callback(Genres), title=L('Genres')))
+    oc.add(DirectoryObject(key=Callback(Broadcasts), title=L('Broadcasts')))
+    oc.add(DirectoryObject(key=Callback(Popular), title=L('Popular')))
+    oc.add(InputDirectoryObject(key=Callback(Search), title=L('Search'), prompt=L('Search for'), thumb=R(SEARCH_ICON)))
+    oc.add(PrefsObject(title=L('Preferences'), thumb=R(PREFS_ICON)))
     return oc
 
 ################################################################################
 @route(PREFIX + '/collection', page=int)
 def Collection(page=0):
-    oc = ObjectContainer(title2='Collection')
+    oc = ObjectContainer(title2=L('Collection'))
 
     library = shark.userGetSongsInLibrary(page)
     for song in sorted(library['Songs'], key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
@@ -66,7 +66,7 @@ def Collection(page=0):
 ################################################################################
 @route(PREFIX + '/favorites')
 def Favorites():
-    oc = ObjectContainer(title2='Favorites')
+    oc = ObjectContainer(title2=L('Favorites'))
 
     favorites = shark.getFavorites()
     for song in sorted(favorites, key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
@@ -77,7 +77,7 @@ def Favorites():
 ################################################################################
 @route(PREFIX + '/playlists')
 def Playlists():
-    oc = ObjectContainer(title2='Playlists')
+    oc = ObjectContainer(title2=L('Playlists'))
 
     playlists = shark.userGetPlaylists()
     for playlist in playlists['Playlists']:
@@ -94,7 +94,7 @@ def Playlists():
 ################################################################################
 @route(PREFIX + '/genres')
 def Genres():
-    oc = ObjectContainer(title2='Genres')
+    oc = ObjectContainer(title2=L('Genres'))
 
     tags = shark.getTopLevelTags()
     for tag in tags:
@@ -105,7 +105,7 @@ def Genres():
 ################################################################################
 @route(PREFIX + '/broadcasts')
 def Broadcasts():
-    oc = ObjectContainer(title2='Broadcasts')
+    oc = ObjectContainer(title2=L('Broadcasts'))
 
     broadcasts = shark.getTopBroadcastsCombined()
     for key, value in sorted(broadcasts.iteritems(), key = lambda x: ('subscribers_count' in x[1], x[1].get('subscribers_count')), reverse = True):
@@ -132,10 +132,10 @@ def Broadcasts():
 ################################################################################
 @route(PREFIX + '/popular')
 def Popular():
-    oc = ObjectContainer(title2='Popular')
-    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular Today', type='daily'), title='Popular Today'))
-    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular This Week', type='weekly'), title='Popular This Week'))
-    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title='Popular This Month', type='monthly'), title='Popular This Month'))
+    oc = ObjectContainer(title2=L('Popular'))
+    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title=L('Popular Today'), type='daily'), title=L('Popular Today')))
+    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title=L('Popular This Week'), type='weekly'), title=L('Popular This Week')))
+    oc.add(DirectoryObject(key = Callback(PopularSubMenu, title=L('Popular This Month'), type='monthly'), title=L('Popular This Month')))
     return oc
 
 ################################################################################
@@ -153,8 +153,8 @@ def PlaylistsSubMenu(title, id):
 @route(PREFIX + '/genresubmenu')
 def GenreSubMenu(title, id):
     oc = ObjectContainer(title2=title)
-    oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=title, id=id), title='Play ' + title))
-    oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title='Related Genres: ' + title, id=id, type='related'), title='Related Genres'))
+    oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=title, id=id), title=L('Play') + ' ' + title))
+    oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=L('Related Genres') + ': ' + title, id=id, type='related'), title=L('Related Genres')))
     return oc
 
 ################################################################################
@@ -165,7 +165,7 @@ def GenrePlayMenu(title, id, type=None):
     info = shark.getPageInfoByIDType(id)
     if type == 'related':
         for song in info['Data']['RelatedTags']:
-            oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=song['TagName'], id=song['TagID']), title='Play ' + song['TagName']))
+            oc.add(DirectoryObject(key = Callback(GenrePlayMenu, title=song['TagName'], id=song['TagID']), title=L('Play') + ' ' + song['TagName']))
 
     else:
         for song in info['Data']['Songs']:
@@ -187,7 +187,7 @@ def PopularSubMenu(title, type):
 ################################################################################
 @route(PREFIX + '/search')
 def Search(query):
-    oc = ObjectContainer(title2='Search Results')
+    oc = ObjectContainer(title2=L('Search Results'))
 
     results = shark.getResultsFromSearch(query)
     for key, values in results['result'].iteritems():
@@ -279,7 +279,7 @@ def CreateTrackObject(song, include_container=False):
     elif 'SongName' in song:
         track_obj.title = song['SongName']
     else:
-        track_obj.title = 'No title provided'
+        track_obj.title = L('No title provided')
 
     if 'BroadcastId' in song:
         media_obj.add(PartObject(key = Callback(GetBroadcastURL, id=song['BroadcastId'], ext='mp3')))

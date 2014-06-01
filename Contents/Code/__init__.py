@@ -315,7 +315,7 @@ def CreateTrackObject(song, include_container=False):
         return track_obj
 
 ################################################################################
-@route(PREFIX + '/getstreamurl')
+@route(PREFIX + '/getstreamurl.mp3')
 def GetStreamURL(id):
     url, server, key = shark.getStreamKeyFromSongIDEx(id)
     if url:
@@ -325,7 +325,7 @@ def GetStreamURL(id):
         return Redirect('')
 
 ################################################################################
-@route(PREFIX + '/getbroadcasturl')
+@route(PREFIX + '/getbroadcasturl.mp3')
 def GetBroadcastURL(id):
     url = shark.getMobileBroadcastURL(id, Prefs['broadcast_quality'])
 

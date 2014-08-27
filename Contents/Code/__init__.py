@@ -191,9 +191,8 @@ def Search(query):
     for key, values in results['result'].iteritems():
         if key == 'Artists':
             for artist in values:
-                artistObj = ArtistObject(
+                artistObj = DirectoryObject(
                     key=Callback(ShowArtistOptions, name=artist['Name'], id=artist['ArtistID']),
-                    rating_key=artist['ArtistID'],
                     title=artist['Name']
                 )
 
@@ -210,10 +209,8 @@ def Search(query):
 
         elif key == 'Albums':
             for album in values:
-                albumObj = AlbumObject(
+                albumObj = DirectoryObject(
                     key=Callback(ShowAlbumOptions, name=album['AlbumName'], id=album['AlbumID']),
-                    rating_key=album['AlbumID'],
-                    artist=album['ArtistName'],
                     title=album['AlbumName']
                 )
 
@@ -233,10 +230,8 @@ def ShowArtistOptions(name, id):
 
     albums = shark.artistGetAllAlbums(id)
     for album in sorted(albums['albums'], key = lambda x: sortInt(x.get('Year'))):
-        albumObj = AlbumObject(
+        albumObj = DirectoryObject(
             key=Callback(ShowAlbumOptions, name=album['Name'], id=album['AlbumID']),
-            rating_key=album['AlbumID'],
-            artist=name,
             title=album['Name']
         )
 

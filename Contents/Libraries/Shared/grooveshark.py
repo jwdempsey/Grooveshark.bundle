@@ -87,7 +87,7 @@ class Grooveshark(object):
         self.user_id = self._request('authenticateUser', {'username': self.username, 'password': self.password})['userID']
 
     def userGetSongsInLibrary(self, page=0, user=None):
-        user = user if not None else self.user_id
+        user = self.user_id if user == None else user
         return self._request('userGetSongsInLibrary', {'page': page, 'userID': user})
 
     def getFavorites(self, ofWhat='Songs', user=None):
@@ -95,7 +95,7 @@ class Grooveshark(object):
         return self._request('getFavorites', {'userID': user, 'ofWhat': ofWhat})
 
     def userGetPlaylists(self, user=None):
-        user = user if not None else self.user_id
+        user = self.user_id if user == None else user
         return self._request('userGetPlaylists', {'userID': user})
 
     def playlistGetSongs(self, id):

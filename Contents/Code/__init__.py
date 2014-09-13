@@ -39,6 +39,7 @@ def Main():
             oc.add(DirectoryObject(key=Callback(Collection), title=L('Collection')))
             oc.add(DirectoryObject(key=Callback(Favorites), title=L('Favorites')))
             oc.add(DirectoryObject(key=Callback(Playlists), title=L('Playlists')))
+            oc.add(DirectoryObject(key=Callback(Followers), title=L('Followers')))
 
     oc.add(DirectoryObject(key=Callback(Genres), title=L('Genres')))
     oc.add(DirectoryObject(key=Callback(Broadcasts), title=L('Broadcasts')))
@@ -49,24 +50,24 @@ def Main():
 
 ################################################################################
 @route(PREFIX + '/collection', page=int)
-def Collection(page=0):
+def Collection(page=0, id=None):
     oc = ObjectContainer(title2=L('Collection'))
 
-    library = shark.userGetSongsInLibrary(page)
+    library = shark.userGetSongsInLibrary(page, id)
     for song in sorted(library['Songs'], key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
         oc.add(CreateTrackObject(song=song))
 
     if library['hasMore'] == True:
-        oc.add(NextPageObject(key=Callback(Collection, page=page+1)))
+        oc.add(NextPageObject(key=Callback(Collection, page=page+1, id=id)))
 
     return oc
 
 ################################################################################
 @route(PREFIX + '/favorites')
-def Favorites():
+def Favorites(id=None):
     oc = ObjectContainer(title2=L('Favorites'))
 
-    favorites = shark.getFavorites()
+    favorites = shark.getFavorites('Songs', id)
     for song in sorted(favorites, key = lambda x: (x.get('ArtistName', None), x.get('AlbumName', None), sortInt(x.get('TrackNum')))):
         oc.add(CreateTrackObject(song=song))
 
@@ -74,10 +75,10 @@ def Favorites():
 
 ################################################################################
 @route(PREFIX + '/playlists')
-def Playlists():
+def Playlists(id=None):
     oc = ObjectContainer(title2=L('Playlists'))
 
-    playlists = shark.userGetPlaylists()
+    playlists = shark.userGetPlaylists(id)
     for playlist in playlists['Playlists']:
         do = DirectoryObject(key = Callback(PlaylistsSubMenu, title=playlist['Name'], id=playlist['PlaylistID']), title=playlist['Name'])
         if 'Picture' in playlist and playlist['Picture'] != None:
@@ -86,6 +87,18 @@ def Playlists():
             do.thumb = shark.no_album_url
 
         oc.add(do)
+
+    return oc
+
+################################################################################
+@route(PREFIX + '/followers')
+def Followers():
+    oc = ObjectContainer(title2=L('Followers'))
+    users = shark.getFavorites('Users')
+    for user in users:
+        name = '{0} {1}'.format(user['FName'], user['LName'])
+        thumb = shark.users_base_url + user['Picture']
+        oc.add(DirectoryObject(key=Callback(FollowersSubMenu, id=user['UserID'], name=name), title=name, thumb=thumb))
 
     return oc
 
@@ -180,6 +193,15 @@ def PopularSubMenu(title, type):
     for song in songs['Songs']:
         oc.add(CreateTrackObject(song=song))
 
+    return oc
+
+################################################################################
+@route(PREFIX + '/followerssubmenu')
+def FollowersSubMenu(id, name):
+    oc = ObjectContainer(title2=name)
+    oc.add(DirectoryObject(key=Callback(Collection, id=id), title=L('Collection')))
+    oc.add(DirectoryObject(key=Callback(Favorites, id=id), title=L('Favorites')))
+    oc.add(DirectoryObject(key=Callback(Playlists, id=id), title=L('Playlists')))
     return oc
 
 ################################################################################

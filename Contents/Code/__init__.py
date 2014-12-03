@@ -9,7 +9,7 @@ ICON           = 'icon-default.png'
 SEARCH_ICON    = 'icon-search.png'
 PREFS_ICON     = 'icon-prefs.png'
 PREFIX         = '/music/grooveshark'
-shark          = Grooveshark()
+shark          = None
 
 def toInt(s):
     try:
@@ -31,6 +31,10 @@ def Start():
 ################################################################################
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def Main():
+    global shark
+    if shark == None:
+        shark = Grooveshark()
+
     oc = ObjectContainer(title2=TITLE)
 
     if Prefs['username'] and Prefs['password']:

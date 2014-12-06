@@ -18,5 +18,11 @@
   "Followers":"Followers",
   "Username": "Username",
   "Password": "Password",
-  "HQ Broadcast Stream (slower)": "HQ Broadcast Stream (slower)"
+  "HQ Broadcast Stream (slower)": "HQ Broadcast Stream (slower)",
+  "Artist": "Artist",
+  "Album": "Album",
+  "Song": "Song",
+  "Options for": "Options for",
+  "Add to": "Add to",
+  "Adding Success": "Song successfully added!"
 }

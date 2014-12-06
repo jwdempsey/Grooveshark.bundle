@@ -78,19 +78,25 @@ def Favorites(id=None):
     return oc
 
 ################################################################################
-@route(PREFIX + '/playlists')
-def Playlists(id=None):
+@route(PREFIX + '/playlists', song=dict)
+def Playlists(id=None, song=None):
     oc = ObjectContainer(title2=L('Playlists'))
 
     playlists = shark.userGetPlaylists(id)
     for playlist in playlists['Playlists']:
-        do = DirectoryObject(key = Callback(PlaylistsSubMenu, title=playlist['Name'], id=playlist['PlaylistID']), title=playlist['Name'])
-        if 'Picture' in playlist and playlist['Picture'] != None:
-            do.thumb = shark.playlist_base_url + '200_' + playlist['Picture']
-        else:
-            do.thumb = shark.no_album_url
+        # This block is for normal selection of playlists
+        if song == None:
+            do = DirectoryObject(key = Callback(PlaylistsSubMenu, title=playlist['Name'], id=playlist['PlaylistID']), title=playlist['Name'])
+            if 'Picture' in playlist and playlist['Picture'] != None:
+                do.thumb = shark.playlist_base_url + '200_' + playlist['Picture']
+            else:
+                do.thumb = shark.no_album_url
 
-        oc.add(do)
+            oc.add(do)
+        # This block is for when a song is being added to a playlist
+        else:
+            oc.add(DirectoryObject(key=Callback(AddToCollection, song=song, type=2, playlistId=playlist['PlaylistID']), title=playlist['Name']))
+
 
     return oc
 
@@ -219,7 +225,8 @@ def Search(query):
             for artist in values:
                 artistObj = DirectoryObject(
                     key=Callback(ShowArtistOptions, name=artist['Name'], id=artist['ArtistID']),
-                    title=artist['Name']
+                    title=artist['Name'],
+                    summary=L('Artist')
                 )
 
                 if 'CoverArtFilename' in artist and artist['CoverArtFilename'] != None and ''.join(artist['CoverArtFilename'].split()) != '':
@@ -231,13 +238,35 @@ def Search(query):
 
         elif key == 'Songs':
             for song in values:
-                oc.add(CreateTrackObject(song=song))
+                if 'Name' in song:
+                    title = song['Name']
+                elif 'SongName' in song:
+                    title = song['SongName']
+                else:
+                    title = L('No title provided')
+
+                do = DirectoryObject(
+                    key=Callback(AddItemMenu, title=title, song=song),
+                    title=title,
+                    summary=L('Song')
+                )
+
+                if 'CoverArtFilename' in song and song['CoverArtFilename'] != None and ''.join(song['CoverArtFilename'].split()) != '':
+                    if song['CoverArtFilename'].startswith('http'):
+                        do.thumb = song['CoverArtFilename']
+                    else:
+                        do.thumb = shark.album_base_url + song['CoverArtFilename']
+                else:
+                    do.thumb = shark.no_album_url
+
+                oc.add(do)
 
         elif key == 'Albums':
             for album in values:
                 albumObj = DirectoryObject(
                     key=Callback(ShowAlbumOptions, name=album['AlbumName'], id=album['AlbumID']),
-                    title=album['AlbumName']
+                    title=album['AlbumName'],
+                    summary=L('Album')
                 )
 
                 if 'CoverArtFilename' in album and album['CoverArtFilename'] != None and ''.join(album['CoverArtFilename'].split()) != '':
@@ -248,6 +277,41 @@ def Search(query):
                 oc.add(albumObj)
 
     return oc
+
+################################################################################
+@route(PREFIX + '/additemmenu', song=dict)
+def AddItemMenu(title, song):
+    oc = ObjectContainer(title2='%s %s' % (L('Options for'), title))
+    oc.add(CreateTrackObject(song=song))
+    oc.add(DirectoryObject(key=Callback(AddToCollection, song=song, type=0), title='%s %s' % (L('Add to'), L('Collection'))))
+    oc.add(DirectoryObject(key=Callback(AddToCollection, song=song, type=1), title='%s %s' % (L('Add to'), L('Favorites'))))
+    oc.add(DirectoryObject(key=Callback(Playlists, song=song), title='%s %s' % (L('Add to'), L('Playlists'))))
+
+    return oc
+
+################################################################################
+@route(PREFIX + '/addtocollection', song=dict, type=int)
+def AddToCollection(song, type, playlistId=None):
+    data = [{
+        "songID": song.get('SongID', 0),
+        "songName": song.get('SongName', ''),
+        "albumID": song.get('AlbumID', ''),
+        "albumName": song.get('AlbumName', ''),
+        "artistID": song.get('ArtistID', 0),
+        "artistName": song.get('ArtistName', ''),
+        "artFilename": song.get('ArtistCoverArtFilename', ''),
+        "track": song.get('TrackNum', 0),
+        "isVerified": song.get('IsVerified', 0)
+    }]
+
+    if type == 0:
+        shark.userAddSongsToLibrary(data)
+    elif type == 1:
+        shark.favorite(data)
+    elif type == 2:
+        shark.playlistAddSongToExistingEx(playlistId, data)
+
+    return ObjectContainer(header=L('Adding Song'), message=L('Adding Success'))
 
 ################################################################################
 @route(PREFIX + '/showartistoptions')

@@ -151,6 +151,15 @@ class Grooveshark(object):
         if data != False:
             return data['url'].replace('\\', '') + '?sid=' + data['key'] + q
 
+    def userAddSongsToLibrary(self, songs):
+        return self._request('userAddSongsToLibrary', {'songs': songs})
+
+    def favorite(self, song):
+        return self._request('favorite', {'what': 'Song', 'ID': song[0]['songID'], "details": song[0]})
+
+    def playlistAddSongToExistingEx(self, playlistId, song):
+        return self._request('playlistAddSongToExistingEx', {'playlistID': playlistId, 'songID': song[0]['songID'], "song": song[0]})
+
     def markSongDownloadedEx(self, id, streamServerID, streamKey):
         parameters = {'songID': id,
                       'streamServerID': streamServerID,
